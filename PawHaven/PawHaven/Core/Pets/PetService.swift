@@ -21,7 +21,7 @@ final class PetService {
         // those return PostgrestTransformBuilder which has no filter methods.
         var query = client
             .from("pets")
-            .select("*, foster:users(*)")
+            .select("*, foster:users!pets_foster_id_fkey(*)")
             .eq("status", value: PetStatus.available.rawValue)
 
         if let species = filters.species {
@@ -43,7 +43,7 @@ final class PetService {
     func fetchPet(id: UUID) async throws -> Pet {
         try await client
             .from("pets")
-            .select("*, foster:users(*)")
+            .select("*, foster:users!pets_foster_id_fkey(*)")
             .eq("id", value: id.uuidString)
             .single()
             .execute()
