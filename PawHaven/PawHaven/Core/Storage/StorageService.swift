@@ -27,7 +27,7 @@ final class StorageService {
             .from("pet-photos")
             .upload(path, data: data, options: FileOptions(contentType: "image/jpeg"))
 
-        return publicURL(bucket: "pet-photos", path: path)
+        return try publicURL(bucket: "pet-photos", path: path)
     }
 
     /// Upload multiple pet photos concurrently. Returns ordered URL array.
@@ -60,13 +60,13 @@ final class StorageService {
                 upsert: true          // overwrite existing avatar
             ))
 
-        return publicURL(bucket: "avatars", path: path)
+        return try publicURL(bucket: "avatars", path: path)
     }
 
     // MARK: - Helpers
 
-    private func publicURL(bucket: String, path: String) -> String {
-        client.storage.from(bucket).getPublicURL(path: path).absoluteString
+    private func publicURL(bucket: String, path: String) throws -> String {
+        try client.storage.from(bucket).getPublicURL(path: path).absoluteString
     }
 }
 
