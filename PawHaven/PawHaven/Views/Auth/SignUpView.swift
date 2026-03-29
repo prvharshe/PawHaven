@@ -60,21 +60,6 @@ struct SignUpView: View {
                         text: $password,
                         isSecure: true
                     )
-
-                    // Role selector
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("I am a...")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(Color.phTextSecondary)
-
-                        Picker("Role", selection: $role) {
-                            ForEach(UserRole.allCases.filter { $0 != .both }, id: \.self) { r in
-                                Text(r.shortName).tag(r)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
                 }
 
                 // Strength indicator

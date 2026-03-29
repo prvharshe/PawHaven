@@ -47,6 +47,8 @@ final class HomeViewModel {
                 savedPetIds = []
                 hasMore = result.count == 20
             }
+        } catch is CancellationError {
+            // Pull-to-refresh was cancelled; silently ignore
         } catch {
             errorMessage = error.localizedDescription
         }
