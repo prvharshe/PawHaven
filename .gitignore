@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode user data (machine-specific, never commit)
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# Xcode derived data & build artifacts
+DerivedData/
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+# Swift Package Manager caches
+.build/
+*.resolved
+
+# Credentials — keep out of version control
+# SupabaseConfig.swift contains live keys; consider moving to xcconfig
+# PawHaven/PawHaven/Config/SupabaseConfig.swift
+
+# CocoaPods (not used, but just in case)
+Pods/
+Podfile.lock
+
+# Fastlane (not used yet)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Instruments
+*.trace
