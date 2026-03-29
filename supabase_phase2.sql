@@ -117,9 +117,22 @@ end;
 $$;
 
 -- Allow users to update their own message read status
-create policy if not exists "Receivers can mark messages as read"
-  on public.messages for update
-  using (auth.uid() = receiver_id);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename   = 'messages'
+      and policyname  = 'Receivers can mark messages as read'
+  ) then
+    execute $policy$
+      create policy "Receivers can mark messages as read"
+        on public.messages for update
+        using (auth.uid() = receiver_id);
+    $policy$;
+  end if;
+end;
+$$;
 
 -- ============================================================
 -- 5. INDEXES (Phase 2 additions for chat performance)
