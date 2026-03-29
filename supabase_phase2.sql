@@ -1,43 +1,12 @@
 -- ============================================================
 -- PawHaven — Phase 2 Supabase Setup
--- Run this in: Supabase Dashboard → SQL Editor → New Query
+-- Paste this entire file into:
+-- Supabase Dashboard → SQL Editor → New Query → Run
 -- ============================================================
 
--- ============================================================
--- 1. STORAGE BUCKETS
--- Create these in Dashboard → Storage, or run via SQL:
--- ============================================================
-
--- insert into storage.buckets (id, name, public)
--- values ('pet-photos', 'pet-photos', true)
--- on conflict do nothing;
-
--- insert into storage.buckets (id, name, public)
--- values ('avatars', 'avatars', true)
--- on conflict do nothing;
-
--- Storage RLS policies (allow authenticated uploads to own folder)
--- create policy "Authenticated users can upload pet photos"
---   on storage.objects for insert to authenticated
---   with check (bucket_id = 'pet-photos');
-
--- create policy "Authenticated users can upload their avatar"
---   on storage.objects for insert to authenticated
---   with check (
---     bucket_id = 'avatars' AND
---     (storage.foldername(name))[1] = auth.uid()::text
---   );
-
--- create policy "Public read on pet-photos"
---   on storage.objects for select using (bucket_id = 'pet-photos');
-
--- create policy "Public read on avatars"
---   on storage.objects for select using (bucket_id = 'avatars');
 
 -- ============================================================
--- 2. get_user_threads() RPC
--- Returns all conversation threads for a given user,
--- newest message first.
+-- 1. get_user_threads() RPC
 -- ============================================================
 
 create or replace function public.get_user_threads(p_user_id uuid)
@@ -56,18 +25,16 @@ as $$
   select
     m.thread_id,
     m.pet_id,
-    -- "other user" = whoever is NOT p_user_id in the thread
     case
-      when m.sender_id   = p_user_id then m.receiver_id
+      when m.sender_id = p_user_id then m.receiver_id
       else m.sender_id
-    end                                                       as other_user_id,
-    last_m.body                                               as last_message,
-    last_m.created_at                                         as last_message_at,
+    end                                         as other_user_id,
+    last_m.body                                 as last_message,
+    last_m.created_at                           as last_message_at,
     count(*) filter (
       where m.receiver_id = p_user_id and m.read = false
-    )                                                         as unread_count
+    )                                           as unread_count
   from messages m
-  -- join to get the latest message per thread
   join lateral (
     select body, created_at
     from messages inner_m
@@ -80,62 +47,60 @@ as $$
   order by last_m.created_at desc;
 $$;
 
--- Grant execute to authenticated users
 grant execute on function public.get_user_threads(uuid) to authenticated;
 
+
 -- ============================================================
--- 3. REALTIME
--- Enable Realtime publication on the messages table so
--- ChatService.messageStream() receives live inserts.
--- Run each statement separately if needed.
+-- 2. REALTIME — enable live inserts on messages
 -- ============================================================
 
--- Add messages to the supabase_realtime publication
 alter publication supabase_realtime add table public.messages;
 
+
 -- ============================================================
--- 4. ADDITIONAL RLS POLICIES (Phase 2 additions)
+-- 3. RLS POLICIES
+-- CREATE POLICY has no IF NOT EXISTS, so we guard with DO blocks.
 -- ============================================================
 
--- Allow authenticated users to delete their own pets
--- (already in phase 1 schema, but adding explicit policy for delete)
+-- Fosters can delete their own pets
 do $$
 begin
   if not exists (
     select 1 from pg_policies
     where schemaname = 'public'
-      and tablename   = 'pets'
-      and policyname  = 'Fosters can delete their own pets'
+      and tablename  = 'pets'
+      and policyname = 'Fosters can delete their own pets'
   ) then
-    execute $policy$
+    execute $p$
       create policy "Fosters can delete their own pets"
         on public.pets for delete
         using (auth.uid() = foster_id);
-    $policy$;
+    $p$;
   end if;
 end;
 $$;
 
--- Allow users to update their own message read status
+-- Receivers can mark their messages as read
 do $$
 begin
   if not exists (
     select 1 from pg_policies
     where schemaname = 'public'
-      and tablename   = 'messages'
-      and policyname  = 'Receivers can mark messages as read'
+      and tablename  = 'messages'
+      and policyname = 'Receivers can mark messages as read'
   ) then
-    execute $policy$
+    execute $p$
       create policy "Receivers can mark messages as read"
         on public.messages for update
         using (auth.uid() = receiver_id);
-    $policy$;
+    $p$;
   end if;
 end;
 $$;
 
+
 -- ============================================================
--- 5. INDEXES (Phase 2 additions for chat performance)
+-- 4. INDEXES
 -- ============================================================
 
 create index if not exists messages_sender_receiver_idx
@@ -144,16 +109,44 @@ create index if not exists messages_sender_receiver_idx
 create index if not exists messages_created_at_idx
   on public.messages(created_at desc);
 
+
 -- ============================================================
--- VERIFICATION QUERIES
--- Run these after setup to confirm everything is working:
+-- 5. STORAGE BUCKETS
+-- Run the two INSERT statements below, then create policies
+-- in Dashboard → Storage → (bucket) → Policies, or uncomment
+-- the policy statements and run them here.
 -- ============================================================
 
--- Check realtime is enabled on messages:
+insert into storage.buckets (id, name, public)
+values ('pet-photos', 'pet-photos', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+-- Storage RLS (uncomment if not setting via Dashboard)
+-- create policy "Public read pet-photos"
+--   on storage.objects for select
+--   using (bucket_id = 'pet-photos');
+
+-- create policy "Authenticated upload pet-photos"
+--   on storage.objects for insert to authenticated
+--   with check (bucket_id = 'pet-photos');
+
+-- create policy "Public read avatars"
+--   on storage.objects for select
+--   using (bucket_id = 'avatars');
+
+-- create policy "Authenticated upload avatars"
+--   on storage.objects for insert to authenticated
+--   with check (bucket_id = 'avatars');
+
+
+-- ============================================================
+-- VERIFICATION (run individually after setup)
+-- ============================================================
+
 -- select * from pg_publication_tables where pubname = 'supabase_realtime';
-
--- Test the RPC (replace with a real user UUID from your users table):
--- select * from get_user_threads('00000000-0000-0000-0000-000000000000');
-
--- Check buckets exist:
 -- select * from storage.buckets;
+-- select * from get_user_threads('paste-a-real-user-uuid-here');
