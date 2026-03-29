@@ -78,4 +78,79 @@ final class PetService {
             .value
         return Set(rows.map(\.petId))
     }
+
+    // MARK: - Foster: My Pets
+
+    func fetchMyPets(fosterId: UUID) async throws -> [Pet] {
+        try await client
+            .from("pets")
+            .select()
+            .eq("foster_id", value: fosterId.uuidString)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+    }
+
+    // MARK: - Create Pet
+
+    func createPet(_ draft: PetInsert) async throws -> Pet {
+        try await client
+            .from("pets")
+            .insert(draft)
+            .select("*, foster:users!pets_foster_id_fkey(*)")
+            .single()
+            .execute()
+            .value
+    }
+
+    // MARK: - Update Status
+
+    func updatePetStatus(_ id: UUID, status: PetStatus) async throws {
+        try await client
+            .from("pets")
+            .update(["status": status.rawValue])
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+
+    // MARK: - Delete Pet
+
+    func deletePet(_ id: UUID) async throws {
+        try await client
+            .from("pets")
+            .delete()
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+}
+
+// MARK: - Insert DTO
+
+struct PetInsert: Encodable {
+    let id: UUID
+    let fosterId: UUID
+    let name: String
+    let species: String
+    let breed: String?
+    let ageMonths: Int?
+    let size: String?
+    let gender: String
+    let description: String?
+    let healthNotes: String?
+    let behaviorNotes: String?
+    let vaccinated: Bool
+    let neutered: Bool
+    let status: String
+    let city: String?
+    let photos: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case fosterId      = "foster_id"
+        case name, species, breed, gender, description, vaccinated, neutered, status, city, photos
+        case ageMonths     = "age_months"
+        case size
+        case healthNotes   = "health_notes"
+        case behaviorNotes = "behavior_notes"
+    }
 }

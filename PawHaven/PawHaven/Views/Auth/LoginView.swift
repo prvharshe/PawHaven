@@ -90,11 +90,16 @@ struct LoginView: View {
     }
 }
 
-// MARK: - Forgot Password (stub)
+// MARK: - Forgot Password
+
 private struct ForgotPasswordView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var email = ""
-    @State private var sent  = false
+    @State private var email      = ""
+    @State private var sent       = false
+    @State private var isLoading  = false
+    @State private var errorMsg: String? = nil
+
+    private let authService = AuthService()
 
     var body: some View {
         NavigationStack {
@@ -104,16 +109,45 @@ private struct ForgotPasswordView: View {
                     .foregroundStyle(Color.phTextSecondary)
                     .multilineTextAlignment(.center)
 
-                PHTextField(label: "Email", placeholder: "you@example.com", text: $email, keyboardType: .emailAddress, autocapitalization: .never)
+                PHTextField(
+                    label: "Email",
+                    placeholder: "you@example.com",
+                    text: $email,
+                    keyboardType: .emailAddress,
+                    autocapitalization: .never
+                )
 
                 if sent {
-                    Label("Reset link sent!", systemImage: "checkmark.circle.fill")
+                    Label("Check your inbox — reset link sent!", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline)
                         .foregroundStyle(Color.phSuccess)
+                        .multilineTextAlignment(.center)
+
+                    PHButton(title: "Done", style: .secondary) { dismiss() }
                 } else {
-                    PHButton(title: "Send Reset Link", style: .primary) {
-                        // TODO: call supabase.auth.resetPasswordForEmail(email)
-                        sent = true
+                    PHButton(title: "Send Reset Link", style: .primary, isLoading: isLoading) {
+                        guard !email.isEmpty else { return }
+                        isLoading = true
+                        errorMsg  = nil
+                        Task {
+                            defer { isLoading = false }
+                            do {
+                                try await authService.resetPassword(email: email)
+                                sent = true
+                            } catch {
+                                errorMsg = error.localizedDescription
+                            }
+                        }
                     }
+                    .disabled(email.isEmpty || isLoading)
+                    .opacity(email.isEmpty ? 0.5 : 1)
+                }
+
+                if let errorMsg {
+                    Text(errorMsg)
+                        .font(.caption)
+                        .foregroundStyle(Color.phDestructive)
+                        .multilineTextAlignment(.center)
                 }
             }
             .padding(24)

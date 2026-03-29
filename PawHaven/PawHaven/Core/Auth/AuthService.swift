@@ -46,6 +46,12 @@ final class AuthService {
         try await client.auth.signOut()
     }
 
+    // MARK: - Password Reset
+
+    func resetPassword(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email)
+    }
+
     // MARK: - Current User ID
 
     var currentUserId: UUID? {

@@ -4,14 +4,18 @@
 // Full pet profile. Sticky photo header, scrollable details, sticky CTA footer.
 
 import SwiftUI
+import Supabase
 
 struct PetDetailView: View {
     let petId: UUID
 
     @Environment(AuthViewModel.self) private var authVM
-    @State private var vm = PetDetailViewModel()
-    @State private var photoIndex = 0
-    @State private var showReport = false
+    @State private var vm           = PetDetailViewModel()
+    @State private var photoIndex   = 0
+    @State private var showReport   = false
+    // Chat navigation
+    @State private var chatThread:  ChatNav? = nil
+    @State private var isResolvingThread = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -21,7 +25,6 @@ struct PetDetailView: View {
                 petContent(pet)
             }
 
-            // Sticky bottom CTA
             if let pet = vm.pet, pet.status == .available {
                 stickyFooter(pet)
             }
@@ -41,9 +44,7 @@ struct PetDetailView: View {
                     }
 
                     Menu {
-                        Button("Share", systemImage: "square.and.arrow.up") {
-                            // TODO: share deep link
-                        }
+                        Button("Share", systemImage: "square.and.arrow.up") {}
                         Button("Report", systemImage: "flag", role: .destructive) {
                             showReport = true
                         }
@@ -53,9 +54,7 @@ struct PetDetailView: View {
                 }
             }
         }
-        .task {
-            await vm.load(petId: petId)
-        }
+        .task { await vm.load(petId: petId) }
         .alert("Error", isPresented: .init(
             get: { vm.errorMessage != nil },
             set: { if !$0 { vm.errorMessage = nil } }
@@ -66,7 +65,18 @@ struct PetDetailView: View {
             Text(vm.errorMessage ?? "")
         }
         .sheet(isPresented: $showReport) {
-            ReportSheet(targetType: "pet", targetId: petId)
+            if let pet = vm.pet {
+                ReportSheet(targetType: "pet", targetId: pet.id)
+            }
+        }
+        .navigationDestination(item: $chatThread) { nav in
+            ChatView(
+                threadId:    nav.threadId,
+                petId:       nav.petId,
+                petName:     nav.petName,
+                petCover:    nav.petCover,
+                recipientId: nav.recipientId
+            )
         }
     }
 
@@ -76,17 +86,13 @@ struct PetDetailView: View {
     private func petContent(_ pet: Pet) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Photo carousel
                 photoCarousel(pet)
 
-                // Details
                 VStack(alignment: .leading, spacing: 20) {
-                    // Name + species
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(pet.name)
                                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
-
                             if let breed = pet.breed {
                                 Text(breed)
                                     .font(.title3)
@@ -98,7 +104,6 @@ struct PetDetailView: View {
                             .font(.system(size: 40))
                     }
 
-                    // Quick info chips
                     FlowLayout(spacing: 8) {
                         PHTag(text: pet.ageDisplay, type: .neutral, icon: "calendar")
                         PHTag(text: pet.gender.displayName, type: .neutral)
@@ -118,65 +123,49 @@ struct PetDetailView: View {
 
                     Divider()
 
-                    // Description
                     if let desc = pet.description, !desc.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("About \(pet.name)")
-                                .font(.headline)
-                            Text(desc)
-                                .font(.body)
-                                .foregroundStyle(Color.phTextSecondary)
-                                .lineSpacing(4)
+                            Text("About \(pet.name)").font(.headline)
+                            Text(desc).font(.body).foregroundStyle(Color.phTextSecondary).lineSpacing(4)
                         }
                     }
 
-                    // Health notes
                     if let health = pet.healthNotes, !health.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("Health Notes", systemImage: "cross.case.fill")
-                                .font(.headline)
-                            Text(health)
-                                .font(.body)
-                                .foregroundStyle(Color.phTextSecondary)
+                            Label("Health Notes", systemImage: "cross.case.fill").font(.headline)
+                            Text(health).font(.body).foregroundStyle(Color.phTextSecondary)
                         }
                     }
 
-                    // Behavior notes
                     if let behavior = pet.behaviorNotes, !behavior.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Label("Personality", systemImage: "heart.text.square.fill")
-                                .font(.headline)
-                            Text(behavior)
-                                .font(.body)
-                                .foregroundStyle(Color.phTextSecondary)
+                            Label("Personality", systemImage: "heart.text.square.fill").font(.headline)
+                            Text(behavior).font(.body).foregroundStyle(Color.phTextSecondary)
                         }
                     }
 
                     Divider()
 
-                    // Foster info
                     if let foster = pet.foster {
                         fosterCard(foster)
                     }
                 }
                 .padding(20)
-                // Extra bottom padding so content isn't hidden behind the sticky CTA
                 .padding(.bottom, pet.status == .available ? 90 : 20)
             }
         }
     }
 
     // MARK: - Photo Carousel
+
     private func photoCarousel(_ pet: Pet) -> some View {
         Group {
             if pet.photos.isEmpty {
-                PHAsyncImage(url: nil)
-                    .aspectRatio(1, contentMode: .fit)
+                PHAsyncImage(url: nil).aspectRatio(1, contentMode: .fit)
             } else {
                 TabView(selection: $photoIndex) {
                     ForEach(Array(pet.photos.enumerated()), id: \.offset) { i, url in
-                        PHAsyncImage(url: url)
-                            .tag(i)
+                        PHAsyncImage(url: url).tag(i)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .automatic))
@@ -186,25 +175,21 @@ struct PetDetailView: View {
     }
 
     // MARK: - Foster Card
+
     private func fosterCard(_ foster: UserProfile) -> some View {
         HStack(spacing: 12) {
             AvatarView(url: foster.avatarUrl, size: 48, initials: foster.initials)
-
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(foster.displayName)
-                        .font(.system(.body, weight: .semibold))
+                    Text(foster.displayName).font(.system(.body, weight: .semibold))
                     if foster.verified {
                         Image(systemName: "checkmark.seal.fill")
-                            .font(.caption)
-                            .foregroundStyle(Color.phPrimary)
+                            .font(.caption).foregroundStyle(Color.phPrimary)
                     }
                 }
                 Text("Foster · \(foster.city ?? "Unknown location")")
-                    .font(.caption)
-                    .foregroundStyle(Color.phTextSecondary)
+                    .font(.caption).foregroundStyle(Color.phTextSecondary)
             }
-
             Spacer()
         }
         .padding(14)
@@ -219,7 +204,7 @@ struct PetDetailView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 12) {
-                // Save button
+                // Save
                 Button {
                     if let userId = authVM.currentUserId {
                         Task { await vm.toggleSave(userId: userId) }
@@ -235,19 +220,46 @@ struct PetDetailView: View {
                 }
                 .buttonStyle(.plain)
 
-                NavigationLink {
-                    // TODO: ChatView(petId: pet.id, fosterId: pet.fosterId)
-                    Text("Chat coming in Phase 2")
-                        .foregroundStyle(Color.phTextSecondary)
+                // Message Foster — resolves thread then navigates
+                Button {
+                    guard
+                        let me     = authVM.currentUserId,
+                        let foster = pet.foster,
+                        me != foster.id          // can't message yourself
+                    else { return }
+
+                    isResolvingThread = true
+                    Task {
+                        defer { isResolvingThread = false }
+                        let threadId = try? await ChatService().resolveThreadId(
+                            senderId:   me,
+                            receiverId: foster.id,
+                            petId:      pet.id
+                        )
+                        chatThread = ChatNav(
+                            threadId:    threadId ?? UUID(),
+                            petId:       pet.id,
+                            petName:     pet.name,
+                            petCover:    pet.coverPhoto,
+                            recipientId: foster.id
+                        )
+                    }
                 } label: {
-                    Text("Message Foster")
-                        .font(.system(.body, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(Color.phAccent)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    HStack(spacing: 6) {
+                        if isResolvingThread {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Message Foster")
+                                .font(.system(.body, weight: .semibold))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Color.phAccent)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
+                .disabled(isResolvingThread || authVM.currentUserId == nil || authVM.currentUserId == pet.fosterId)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -256,12 +268,10 @@ struct PetDetailView: View {
     }
 
     // MARK: - Loading
+
     private var loadingView: some View {
         VStack {
-            Rectangle()
-                .fill(Color.phBorder)
-                .aspectRatio(1, contentMode: .fit)
-                .skeleton()
+            Rectangle().fill(Color.phBorder).aspectRatio(1, contentMode: .fit).skeleton()
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(0..<5, id: \.self) { _ in
                     Rectangle().fill(Color.phBorder).frame(height: 14).cornerRadius(4).skeleton()
@@ -272,7 +282,19 @@ struct PetDetailView: View {
     }
 }
 
-// MARK: - Flow Layout (wrapping HStack)
+// MARK: - Chat navigation model
+
+struct ChatNav: Identifiable, Hashable {
+    let id         = UUID()
+    let threadId:    UUID
+    let petId:       UUID
+    let petName:     String
+    let petCover:    String?
+    let recipientId: UUID
+}
+
+// MARK: - Flow Layout
+
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
@@ -302,7 +324,6 @@ struct FlowLayout: Layout {
         var rows: [[LayoutSubview]] = [[]]
         var rowWidth: CGFloat = 0
         let maxWidth = proposal.width ?? .infinity
-
         for view in subviews {
             let w = view.sizeThatFits(.unspecified).width
             if rowWidth + w > maxWidth && !rows.last!.isEmpty {
@@ -316,21 +337,25 @@ struct FlowLayout: Layout {
     }
 }
 
-// MARK: - Report Sheet (stub)
+// MARK: - Report Sheet (wired to DB)
+
 struct ReportSheet: View {
     let targetType: String
-    let targetId: UUID
+    let targetId:   UUID
+    @Environment(AuthViewModel.self) private var authVM
     @Environment(\.dismiss) private var dismiss
-    @State private var reason = ""
+
+    @State private var reason    = "Fake listing"
+    @State private var isLoading = false
+
+    private let reasons = ["Fake listing", "Abuse", "Spam", "Mistreatment", "Other"]
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Why are you reporting this \(targetType)?") {
                     Picker("Reason", selection: $reason) {
-                        ForEach(["Fake listing", "Abuse", "Spam", "Other"], id: \.self) {
-                            Text($0).tag($0)
-                        }
+                        ForEach(reasons, id: \.self) { Text($0).tag($0) }
                     }
                     .pickerStyle(.inline)
                 }
@@ -343,20 +368,41 @@ struct ReportSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Submit") {
-                        // TODO: insert into reports table
-                        dismiss()
+                        guard let reporterId = authVM.currentUserId else { return }
+                        isLoading = true
+                        Task {
+                            defer { isLoading = false }
+                            struct ReportInsert: Encodable {
+                                let reporterId: UUID; let targetType: String
+                                let targetId: String; let reason: String
+                                enum CodingKeys: String, CodingKey {
+                                    case reporterId = "reporter_id"
+                                    case targetType = "target_type"
+                                    case targetId   = "target_id"
+                                    case reason
+                                }
+                            }
+                            try? await SupabaseClient.shared
+                                .from("reports")
+                                .insert(ReportInsert(
+                                    reporterId: reporterId,
+                                    targetType: targetType,
+                                    targetId:   targetId.uuidString,
+                                    reason:     reason
+                                ))
+                                .execute()
+                            dismiss()
+                        }
                     }
-                    .disabled(reason.isEmpty)
+                    .fontWeight(.semibold)
+                    .disabled(isLoading)
                 }
             }
-            .onAppear { reason = "Fake listing" }
         }
     }
 }
 
 #Preview {
-    NavigationStack {
-        PetDetailView(petId: UUID())
-    }
-    .environment(AuthViewModel())
+    NavigationStack { PetDetailView(petId: UUID()) }
+        .environment(AuthViewModel())
 }
