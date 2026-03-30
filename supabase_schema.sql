@@ -201,12 +201,60 @@ create policy "Users manage their own blocks"
 
 -- ============================================================
 -- STORAGE
--- Run separately in: Storage → New Bucket
--- Or via Dashboard → Storage → Create bucket "pet-photos"
--- with Public access = true
+-- Run this block in: Supabase Dashboard → SQL Editor
 -- ============================================================
--- insert into storage.buckets (id, name, public)
--- values ('pet-photos', 'pet-photos', true);
+
+-- Create buckets (safe to re-run; skipped if already exist)
+insert into storage.buckets (id, name, public)
+values
+  ('pet-photos', 'pet-photos', true),
+  ('avatars',    'avatars',    true)
+on conflict (id) do nothing;
+
+-- ---- pet-photos policies ----
+
+-- Anyone can read pet photos (bucket is public, but explicit policy is best practice)
+create policy "Public read pet photos"
+  on storage.objects for select
+  using (bucket_id = 'pet-photos');
+
+-- Authenticated users can upload pet photos
+create policy "Authenticated users can upload pet photos"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'pet-photos'
+    and auth.role() = 'authenticated'
+  );
+
+-- Authenticated users can delete their uploads (for re-upload / cleanup)
+create policy "Authenticated users can delete pet photos"
+  on storage.objects for delete
+  using (
+    bucket_id = 'pet-photos'
+    and auth.role() = 'authenticated'
+  );
+
+-- ---- avatars policies ----
+
+create policy "Public read avatars"
+  on storage.objects for select
+  using (bucket_id = 'avatars');
+
+create policy "Users can upload their own avatar"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'avatars'
+    and auth.role() = 'authenticated'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "Users can update their own avatar"
+  on storage.objects for update
+  using (
+    bucket_id = 'avatars'
+    and auth.role() = 'authenticated'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 -- ============================================================
 -- SAMPLE DATA (optional — seed for development)
