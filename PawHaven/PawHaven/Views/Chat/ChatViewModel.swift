@@ -19,7 +19,8 @@ final class ChatViewModel {
     let receiverId: UUID
 
     private let chatService: ChatService
-    private var realtimeTask: Task<Void, Never>?
+    /// Held for `deinit` cancellation; `Task.cancel()` is thread-safe.
+    private nonisolated(unsafe) var realtimeTask: Task<Void, Never>?
 
     init(
         threadId:   UUID,

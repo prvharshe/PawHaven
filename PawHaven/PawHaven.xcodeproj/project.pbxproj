@@ -342,14 +342,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCSwiftPackageProductDependency section */
-		0DA720F32F79187B0052670A /* Supabase */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 0DA720F22F79187B0052670A /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* Begin XCRemoteSwiftPackageReference section */
 		0DA720F22F79187B0052670A /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -360,6 +352,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0DA720F32F79187B0052670A /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0DA720F22F79187B0052670A /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0DA7209D2F7914F20052670A /* Project object */;
 }

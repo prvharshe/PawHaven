@@ -13,6 +13,13 @@ import Supabase
 final class ChatService {
     private let client: SupabaseClient
 
+    /// Matches PostgREST / Realtime timestamp encoding for `Message`.
+    private static let messageDecoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }()
+
     init(client: SupabaseClient = .shared) {
         self.client = client
     }
@@ -130,7 +137,7 @@ final class ChatService {
             }
             Task {
                 for await insert in insertions {
-                    if let msg = try? insert.decodeRecord(as: Message.self) {
+                    if let msg = try? insert.decodeRecord(as: Message.self, decoder: Self.messageDecoder) {
                         continuation.yield(msg)
                     }
                 }

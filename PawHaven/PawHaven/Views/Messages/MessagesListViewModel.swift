@@ -37,9 +37,14 @@ final class MessagesListViewModel {
                 for (i, thread) in raw.enumerated() {
                     group.addTask { [weak self] in
                         guard let self else { return (i, nil, nil) }
-                        async let pet     = thread.petId.flatMap { try? await self.petService.fetchPet(id: $0) }
-                        async let profile = try? await self.profileService.fetchProfile(userId: thread.otherUserId)
-                        return await (i, pet, profile)
+                        let pet: Pet?
+                        if let pid = thread.petId {
+                            pet = try? await self.petService.fetchPet(id: pid)
+                        } else {
+                            pet = nil
+                        }
+                        let profile = try? await self.profileService.fetchProfile(userId: thread.otherUserId)
+                        return (i, pet, profile)
                     }
                 }
                 for await (i, pet, profile) in group {
