@@ -5,7 +5,7 @@ import SwiftUI
 
 struct MessagesListView: View {
     @Environment(AuthViewModel.self) private var authVM
-    @State private var vm = MessagesListViewModel()
+    @Environment(MessagesListViewModel.self) private var vm
 
     var body: some View {
         NavigationStack {
@@ -126,4 +126,5 @@ private struct ThreadRow: View {
 #Preview {
     MessagesListView()
         .environment(AuthViewModel())
+        .environment(MessagesListViewModel())
 }
