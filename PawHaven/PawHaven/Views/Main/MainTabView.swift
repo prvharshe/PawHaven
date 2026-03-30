@@ -11,6 +11,7 @@ struct MainTabView: View {
     @Environment(AuthViewModel.self) private var authVM
     @State private var selectedTab: PHTab = .home
     @State private var showAddPet        = false
+    @State private var messagesVM        = MessagesListViewModel()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -31,7 +32,9 @@ struct MainTabView: View {
 
             Tab("Messages", systemImage: "bubble.left.and.bubble.right.fill", value: PHTab.messages) {
                 MessagesListView()
+                    .environment(messagesVM)
             }
+            .badge(messagesVM.totalUnreadCount)
 
             Tab("Profile", systemImage: "person.fill", value: PHTab.profile) {
                 ProfileView()

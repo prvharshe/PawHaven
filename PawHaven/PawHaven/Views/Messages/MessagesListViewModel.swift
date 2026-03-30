@@ -11,6 +11,8 @@ final class MessagesListViewModel {
     var isLoading:    Bool         = false
     var errorMessage: String?      = nil
 
+    var totalUnreadCount: Int { threads.reduce(0) { $0 + $1.unreadCount } }
+
     private let chatService:    ChatService
     private let petService:     PetService
     private let profileService: ProfileService
