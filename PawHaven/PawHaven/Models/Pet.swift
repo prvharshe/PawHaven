@@ -72,6 +72,32 @@ struct Pet: Codable, Identifiable, Hashable {
         case foster
     }
 
+    // Custom decoder: locationPoint uses try? so an unexpected PostgREST
+    // wire format (WKB hex, WKT string, etc.) degrades to nil instead of
+    // crashing the entire Pet decode.
+    init(from decoder: Decoder) throws {
+        let c         = try decoder.container(keyedBy: CodingKeys.self)
+        id            = try c.decode(UUID.self,       forKey: .id)
+        fosterId      = try c.decode(UUID.self,       forKey: .fosterId)
+        name          = try c.decode(String.self,     forKey: .name)
+        species       = try c.decode(PetSpecies.self, forKey: .species)
+        breed         = try c.decodeIfPresent(String.self,    forKey: .breed)
+        ageMonths     = try c.decodeIfPresent(Int.self,       forKey: .ageMonths)
+        size          = try c.decodeIfPresent(PetSize.self,   forKey: .size)
+        gender        = try c.decode(PetGender.self,  forKey: .gender)
+        description   = try c.decodeIfPresent(String.self,    forKey: .description)
+        healthNotes   = try c.decodeIfPresent(String.self,    forKey: .healthNotes)
+        behaviorNotes = try c.decodeIfPresent(String.self,    forKey: .behaviorNotes)
+        vaccinated    = try c.decode(Bool.self,        forKey: .vaccinated)
+        neutered      = try c.decode(Bool.self,        forKey: .neutered)
+        status        = try c.decode(PetStatus.self,   forKey: .status)
+        city          = try c.decodeIfPresent(String.self,    forKey: .city)
+        locationPoint = try? c.decode(GeoPoint.self,   forKey: .locationPoint)
+        photos        = try c.decode([String].self,    forKey: .photos)
+        createdAt     = try c.decode(Date.self,        forKey: .createdAt)
+        foster        = try c.decodeIfPresent(UserProfile.self, forKey: .foster)
+    }
+
     // MARK: - Computed helpers
 
     var coverPhoto: String? { photos.first }
