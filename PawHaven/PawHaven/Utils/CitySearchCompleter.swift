@@ -39,8 +39,8 @@ final class CitySearchCompleter: NSObject, MKLocalSearchCompleterDelegate {
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         let results = completer.results
             .filter { result in
-                // Skip street-level results (titles with digits are usually addresses)
-                !result.title.first?.isNumber ?? true
+                // Skip street-level results (titles starting with a digit are usually addresses)
+                !(result.title.first?.isNumber ?? false)
             }
             .prefix(5)
             .map { CitySearchResult(title: $0.title, subtitle: $0.subtitle) }
