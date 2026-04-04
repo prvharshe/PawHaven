@@ -118,6 +118,7 @@ extension View {
         vaccinated: true,
         neutered: true,
         status: .available,
+        urgent: false,
         city: "Mumbai",
         photos: [],
         createdAt: .now
