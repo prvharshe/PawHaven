@@ -22,6 +22,9 @@ struct ReviewPublishStep: View {
                 }
                 .padding(.top, 8)
 
+                // Urgent help toggle
+                urgentToggle
+
                 // City field with autocomplete
                 VStack(alignment: .leading, spacing: 0) {
                     PHTextField(
@@ -94,6 +97,69 @@ struct ReviewPublishStep: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 100)
         }
+    }
+
+    // MARK: - Urgent Toggle
+
+    private var urgentToggle: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(vm.needsUrgentHelp
+                          ? Color.phDestructive.opacity(0.12)
+                          : Color.phBorder.opacity(0.4))
+                    .frame(width: 44, height: 44)
+                Image(systemName: vm.needsUrgentHelp ? "sos.circle.fill" : "sos.circle")
+                    .font(.title3)
+                    .foregroundStyle(vm.needsUrgentHelp ? Color.phDestructive : Color.phTextSecondary)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Needs Immediate Help")
+                    .font(.system(.subheadline, weight: .semibold))
+
+                if vm.needsUrgentHelp {
+                    HStack(spacing: 4) {
+                        if vm.locationManager.location == nil {
+                            ProgressView().scaleEffect(0.65)
+                            Text("Getting location…")
+                        } else {
+                            Image(systemName: "location.fill")
+                                .foregroundStyle(Color.phSuccess)
+                            Text("Location captured")
+                                .foregroundStyle(Color.phSuccess)
+                        }
+                    }
+                    .font(.caption)
+                } else {
+                    Text("Toggle on if this animal needs rescuing right now.")
+                        .font(.caption)
+                        .foregroundStyle(Color.phTextSecondary)
+                }
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { vm.needsUrgentHelp },
+                set: { on in
+                    vm.needsUrgentHelp = on
+                    if on { vm.startCapturingUrgentLocation() }
+                }
+            ))
+            .labelsHidden()
+            .tint(Color.phDestructive)
+        }
+        .padding(14)
+        .background(Color.phSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(vm.needsUrgentHelp
+                        ? Color.phDestructive.opacity(0.4)
+                        : Color.phBorder, lineWidth: 1)
+        )
+        .animation(.spring(response: 0.3), value: vm.needsUrgentHelp)
     }
 
     // MARK: - Preview Card

@@ -20,7 +20,7 @@ struct MainTabView: View {
                 HomeView()
             }
 
-            Tab("Map", systemImage: "map.fill", value: PHTab.map) {
+            Tab("Rescue", systemImage: "sos.circle.fill", value: PHTab.map) {
                 PetMapView()
                     .environment(authVM)
             }

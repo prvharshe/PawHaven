@@ -33,10 +33,12 @@ struct PetMapView: View {
 
                 if vm.isLoading {
                     loadingPill
+                } else if !vm.isLoading && vm.petsWithCoordinates.isEmpty {
+                    noUrgentPillView
                 }
             }
             .ignoresSafeArea(edges: .bottom)
-            .navigationTitle("Map")
+            .navigationTitle("Needs Help Now")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Pet.self) { pet in
                 PetDetailView(petId: pet.id)
@@ -162,7 +164,22 @@ struct PetMapView: View {
             ProgressView()
                 .progressViewStyle(.circular)
                 .scaleEffect(0.8)
-            Text("Loading pets…")
+            Text("Looking for animals in need…")
+                .font(.caption)
+                .fontWeight(.medium)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .padding(.bottom, 220)
+    }
+
+    private var noUrgentPillView: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Color.phSuccess)
+            Text("No animals need urgent help nearby")
                 .font(.caption)
                 .fontWeight(.medium)
         }
@@ -182,13 +199,28 @@ struct PetMapPin: View {
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(isSelected ? Color.phPrimary : Color.white)
-                .frame(width: isSelected ? 52 : 40, height: isSelected ? 52 : 40)
-                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+            // Pulsing ring for urgent pins
+            if pet.urgent {
+                Circle()
+                    .fill(Color.phDestructive.opacity(0.2))
+                    .frame(width: isSelected ? 70 : 56, height: isSelected ? 70 : 56)
+            }
 
-            Text(pet.species.emoji)
-                .font(.system(size: isSelected ? 26 : 20))
+            Circle()
+                .fill(pet.urgent
+                      ? (isSelected ? Color.phDestructive : Color(red: 0.95, green: 0.25, blue: 0.25))
+                      : (isSelected ? Color.phPrimary : Color.white))
+                .frame(width: isSelected ? 52 : 40, height: isSelected ? 52 : 40)
+                .shadow(color: (pet.urgent ? Color.phDestructive : Color.black).opacity(0.25),
+                        radius: 4, x: 0, y: 2)
+
+            if pet.urgent && !isSelected {
+                Text("🆘")
+                    .font(.system(size: 20))
+            } else {
+                Text(pet.species.emoji)
+                    .font(.system(size: isSelected ? 26 : 20))
+            }
         }
         .animation(.spring(response: 0.3), value: isSelected)
     }

@@ -37,7 +37,11 @@ final class AddPetViewModel {
     var behaviorTags:  Set<String> = []
 
     // MARK: - Step 4: Location & Review
-    var city: String = ""
+    var city:            String  = ""
+    var needsUrgentHelp: Bool    = false
+
+    // Populated via LocationManager when needsUrgentHelp is toggled on
+    let locationManager = LocationManager()
 
     // MARK: - Publish state
     var isPublishing:   Bool    = false
@@ -96,9 +100,12 @@ final class AddPetViewModel {
             let photoURLs = try await storageService.uploadPetPhotos(selectedImages, petId: petId)
 
             // 2. Insert pet row
-            // Geocode city name → city-centre coordinates.
-            // Stores only ~city-level accuracy, never the foster's exact address.
-            let geoPoint: GeoPointInsert? = await geocodeCity(city)
+            // Location strategy:
+            // • Urgent pets  → exact GPS (animal is out there needing help right now)
+            // • Normal posts → no map pin (privacy: foster's home stays private)
+            let geoPoint: GeoPointInsert? = needsUrgentHelp
+                ? urgentGeoPoint()
+                : nil
 
             let draft = PetInsert(
                 id:            petId,
@@ -115,6 +122,7 @@ final class AddPetViewModel {
                 vaccinated:    vaccinated,
                 neutered:      neutered,
                 status:        PetStatus.available.rawValue,
+                urgent:        needsUrgentHelp,
                 city:          city.trimmingCharacters(in: .whitespaces),
                 locationPoint: geoPoint,
                 photos:        photoURLs
@@ -125,16 +133,16 @@ final class AddPetViewModel {
         }
     }
 
-    // MARK: - Geocoding
+    // MARK: - Location (urgent only)
 
-    /// Resolves a city name to its administrative centre coordinates.
-    /// Returns nil on failure — the pet is still saved without a map pin.
-    private func geocodeCity(_ cityName: String) async -> GeoPointInsert? {
-        let trimmed = cityName.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-        let geocoder = CLGeocoder()
-        guard let placemark = try? await geocoder.geocodeAddressString(trimmed).first,
-              let loc = placemark.location else { return nil }
+    /// Called when the user turns on the urgent toggle.
+    func startCapturingUrgentLocation() {
+        locationManager.requestPermissionAndLocation()
+    }
+
+    /// Builds a GeoPointInsert from the last known GPS fix, or nil if unavailable.
+    private func urgentGeoPoint() -> GeoPointInsert? {
+        guard let loc = locationManager.location else { return nil }
         return GeoPointInsert(longitude: loc.coordinate.longitude,
                               latitude:  loc.coordinate.latitude)
     }

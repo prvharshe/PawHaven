@@ -50,12 +50,13 @@ final class PetService {
     // MARK: - Fetch Pets for Map (has location_point set)
 
     func fetchPetsForMap() async throws -> [Pet] {
-        // Fetch up to 200 available pets ordered by newest; map view filters client-side for those with coordinates.
+        // Only urgent pets appear on map — they have exact GPS coordinates.
         try await client
             .from("pets")
             .select("*, foster:users!pets_foster_id_fkey(*)")
             .eq("status", value: PetStatus.available.rawValue)
-            .not("location_point", operator: "is", value: "null")
+            .eq("urgent", value: true)
+            .not("location_point", operator: .is, value: "null")
             .order("created_at", ascending: false)
             .limit(200)
             .execute()
@@ -181,6 +182,7 @@ struct PetInsert: Encodable {
     let vaccinated: Bool
     let neutered: Bool
     let status: String
+    let urgent: Bool
     let city: String?
     let locationPoint: GeoPointInsert?
     let photos: [String]
@@ -188,7 +190,7 @@ struct PetInsert: Encodable {
     enum CodingKeys: String, CodingKey {
         case id
         case fosterId      = "foster_id"
-        case name, species, breed, gender, description, vaccinated, neutered, status, city, photos
+        case name, species, breed, gender, description, vaccinated, neutered, status, urgent, city, photos
         case ageMonths     = "age_months"
         case size
         case healthNotes   = "health_notes"

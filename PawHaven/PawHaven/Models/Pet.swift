@@ -48,6 +48,7 @@ struct Pet: Codable, Identifiable, Hashable {
     var vaccinated: Bool
     var neutered: Bool
     var status: PetStatus
+    var urgent: Bool
     var city: String?
     var locationPoint: GeoPoint?
     var photos: [String]
@@ -65,7 +66,7 @@ struct Pet: Codable, Identifiable, Hashable {
         case description
         case healthNotes   = "health_notes"
         case behaviorNotes = "behavior_notes"
-        case vaccinated, neutered, status, city
+        case vaccinated, neutered, status, urgent, city
         case locationPoint = "location_point"
         case photos
         case createdAt     = "created_at"
@@ -116,6 +117,7 @@ extension Pet {
         vaccinated    = try c.decode(Bool.self,          forKey: .vaccinated)
         neutered      = try c.decode(Bool.self,          forKey: .neutered)
         status        = try c.decode(PetStatus.self,     forKey: .status)
+        urgent        = (try? c.decode(Bool.self,        forKey: .urgent)) ?? false
         city          = try c.decodeIfPresent(String.self,      forKey: .city)
         locationPoint = try? c.decode(GeoPoint.self,     forKey: .locationPoint)
         photos        = try c.decode([String].self,      forKey: .photos)
