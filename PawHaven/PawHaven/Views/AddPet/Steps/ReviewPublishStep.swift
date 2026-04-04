@@ -6,6 +6,9 @@ import SwiftUI
 struct ReviewPublishStep: View {
     @Bindable var vm: AddPetViewModel
 
+    @State private var completer      = CitySearchCompleter()
+    @State private var showSuggestions = false
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -19,12 +22,62 @@ struct ReviewPublishStep: View {
                 }
                 .padding(.top, 8)
 
-                // City field — geocoded to city-centre on publish (privacy safe)
-                PHTextField(
-                    label: "City *",
-                    placeholder: "e.g. Mumbai",
-                    text: $vm.city
-                )
+                // City field with autocomplete
+                VStack(alignment: .leading, spacing: 0) {
+                    PHTextField(
+                        label: "City *",
+                        placeholder: "e.g. Mumbai",
+                        text: $vm.city
+                    )
+                    .onChange(of: vm.city) { _, newValue in
+                        completer.update(query: newValue)
+                        showSuggestions = !newValue.isEmpty
+                    }
+
+                    if showSuggestions && !completer.suggestions.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(completer.suggestions) { result in
+                                Button {
+                                    vm.city        = result.cityName
+                                    showSuggestions = false
+                                    completer.clear()
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Image(systemName: "location.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(Color.phPrimary)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(result.title)
+                                                .font(.subheadline)
+                                                .foregroundStyle(Color.primary)
+                                            if !result.subtitle.isEmpty {
+                                                Text(result.subtitle)
+                                                    .font(.caption)
+                                                    .foregroundStyle(Color.phTextSecondary)
+                                            }
+                                        }
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                }
+                                .buttonStyle(.plain)
+
+                                if result.id != completer.suggestions.last?.id {
+                                    Divider().padding(.leading, 36)
+                                }
+                            }
+                        }
+                        .background(Color.phSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.phBorder, lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
+                        .padding(.top, 4)
+                    }
+                }
 
                 Divider()
 
