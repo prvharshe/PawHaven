@@ -23,44 +23,49 @@ struct PetMapView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ZStack(alignment: .bottom) {
-                map
-
-                if let pet = selectedPet {
-                    petBottomCard(pet)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+            map
+                // Card sits above the tab bar safe area; map extends behind it
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if let pet = selectedPet {
+                        petBottomCard(pet)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else {
+                        // Status pill above the tab bar when no pet is selected
+                        Group {
+                            if vm.isLoading {
+                                loadingPill
+                            } else if vm.petsWithCoordinates.isEmpty {
+                                noUrgentPillView
+                            }
+                        }
+                        .padding(.bottom, 12)
+                        .frame(maxWidth: .infinity)
+                    }
                 }
-
-                if vm.isLoading {
-                    loadingPill
-                } else if !vm.isLoading && vm.petsWithCoordinates.isEmpty {
-                    noUrgentPillView
+                .ignoresSafeArea(edges: .top)
+                .navigationTitle("Needs Help Now")
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(for: Pet.self) { pet in
+                    PetDetailView(petId: pet.id)
                 }
-            }
-            .ignoresSafeArea(edges: .bottom)
-            .navigationTitle("Needs Help Now")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: Pet.self) { pet in
-                PetDetailView(petId: pet.id)
-            }
-            .task { await vm.load() }
-            .onChange(of: vm.locationManager.location) { _, loc in
-                guard let loc else { return }
-                withAnimation(.easeInOut(duration: 1)) {
-                    cameraPosition = .region(MKCoordinateRegion(
-                        center: loc.coordinate,
-                        span:   MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
-                    ))
+                .task { await vm.load() }
+                .onChange(of: vm.locationManager.location) { _, loc in
+                    guard let loc else { return }
+                    withAnimation(.easeInOut(duration: 1)) {
+                        cameraPosition = .region(MKCoordinateRegion(
+                            center: loc.coordinate,
+                            span:   MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+                        ))
+                    }
                 }
-            }
-            .alert("Error", isPresented: .init(
-                get: { vm.errorMessage != nil },
-                set: { if !$0 { vm.errorMessage = nil } }
-            )) {
-                Button("OK") { vm.errorMessage = nil }
-            } message: {
-                Text(vm.errorMessage ?? "")
-            }
+                .alert("Error", isPresented: .init(
+                    get: { vm.errorMessage != nil },
+                    set: { if !$0 { vm.errorMessage = nil } }
+                )) {
+                    Button("OK") { vm.errorMessage = nil }
+                } message: {
+                    Text(vm.errorMessage ?? "")
+                }
         }
     }
 
@@ -154,7 +159,6 @@ struct PetMapView: View {
         .background(Color.phSurface)
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20))
         .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: -4)
-        .padding(.bottom, 0)
     }
 
     // MARK: - Loading Pill
@@ -172,7 +176,6 @@ struct PetMapView: View {
         .padding(.vertical, 8)
         .background(.ultraThinMaterial)
         .clipShape(Capsule())
-        .padding(.bottom, 220)
     }
 
     private var noUrgentPillView: some View {
@@ -187,7 +190,6 @@ struct PetMapView: View {
         .padding(.vertical, 8)
         .background(.ultraThinMaterial)
         .clipShape(Capsule())
-        .padding(.bottom, 220)
     }
 }
 
