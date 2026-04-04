@@ -36,7 +36,9 @@ final class AddPetViewModel {
     var behaviorTags:  Set<String> = []
 
     // MARK: - Step 4: Location & Review
-    var city: String = ""
+    var city:      String  = ""
+    var latitude:  Double? = nil
+    var longitude: Double? = nil
 
     // MARK: - Publish state
     var isPublishing:   Bool    = false
@@ -95,6 +97,11 @@ final class AddPetViewModel {
             let photoURLs = try await storageService.uploadPetPhotos(selectedImages, petId: petId)
 
             // 2. Insert pet row
+            let geoPoint: GeoPointInsert? = {
+                guard let lat = latitude, let lng = longitude else { return nil }
+                return GeoPointInsert(coordinates: [lng, lat])  // GeoJSON: [longitude, latitude]
+            }()
+
             let draft = PetInsert(
                 id:            petId,
                 fosterId:      fosterId,
@@ -111,6 +118,7 @@ final class AddPetViewModel {
                 neutered:      neutered,
                 status:        PetStatus.available.rawValue,
                 city:          city.trimmingCharacters(in: .whitespaces),
+                locationPoint: geoPoint,
                 photos:        photoURLs
             )
             publishedPet = try await petService.createPet(draft)

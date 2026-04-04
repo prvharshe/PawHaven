@@ -4,6 +4,28 @@
 // Maps to the `pets` table in Supabase.
 
 import Foundation
+import CoreLocation
+
+// MARK: - GeoPoint (PostGIS geography → GeoJSON decode)
+
+struct GeoPoint: Codable {
+    let type: String
+    let coordinates: [Double] // GeoJSON: [longitude, latitude]
+
+    var latitude:  Double { coordinates.count > 1 ? coordinates[1] : 0 }
+    var longitude: Double { coordinates.first ?? 0 }
+
+    var clCoordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+}
+
+// MARK: - GeoPointInsert (Swift → Supabase PostgREST insert)
+
+struct GeoPointInsert: Encodable {
+    let type        = "Point"
+    let coordinates: [Double] // [longitude, latitude]
+}
 
 struct Pet: Codable, Identifiable, Hashable {
     let id: UUID
@@ -21,6 +43,7 @@ struct Pet: Codable, Identifiable, Hashable {
     var neutered: Bool
     var status: PetStatus
     var city: String?
+    var locationPoint: GeoPoint?
     var photos: [String]
     let createdAt: Date
 
@@ -36,7 +59,9 @@ struct Pet: Codable, Identifiable, Hashable {
         case description
         case healthNotes   = "health_notes"
         case behaviorNotes = "behavior_notes"
-        case vaccinated, neutered, status, city, photos
+        case vaccinated, neutered, status, city
+        case locationPoint = "location_point"
+        case photos
         case createdAt     = "created_at"
         case foster
     }
@@ -54,6 +79,10 @@ struct Pet: Codable, Identifiable, Hashable {
 
     var isNew: Bool {
         (Calendar.current.dateComponents([.hour], from: createdAt, to: .now).hour ?? 25) < 24
+    }
+
+    var coordinate: CLLocationCoordinate2D? {
+        locationPoint?.clCoordinate
     }
 
     static func == (lhs: Pet, rhs: Pet) -> Bool { lhs.id == rhs.id }
@@ -95,6 +124,9 @@ enum PetStatus: String, Codable {
 // MARK: - Filter
 
 struct PetFilters: Equatable {
-    var species: PetSpecies?
-    var size: PetSize?
+    var species:    PetSpecies?
+    var size:       PetSize?
+    var gender:     PetGender?
+    var vaccinated: Bool?
+    var neutered:   Bool?
 }

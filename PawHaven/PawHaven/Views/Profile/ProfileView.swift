@@ -6,8 +6,9 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(AuthViewModel.self) private var authVM
     @State private var vm            = ProfileViewModel()
-    @State private var showEdit      = false
-    @State private var showAddPet    = false
+    @State private var showEdit           = false
+    @State private var showAddPet         = false
+    @State private var showSaved          = false
     @State private var showSignOutConfirm = false
     @State private var petToDelete:  Pet? = nil
 
@@ -41,6 +42,10 @@ struct ProfileView: View {
                             Task { await vm.load(userId: userId) }
                         }
                     }
+            }
+            .sheet(isPresented: $showSaved) {
+                SavedPetsView()
+                    .environment(authVM)
             }
             .confirmationDialog("Are you sure?", isPresented: $showSignOutConfirm) {
                 Button("Sign Out", role: .destructive) {
@@ -343,6 +348,10 @@ struct ProfileView: View {
                 .padding(.bottom, 8)
 
             VStack(spacing: 0) {
+                settingsRow(icon: "heart.fill", label: "Saved Pets") {
+                    showSaved = true
+                }
+                Divider().padding(.leading, 52)
                 settingsRow(icon: "bell", label: "Notifications", action: {})
                 Divider().padding(.leading, 52)
                 settingsRow(icon: "lock.shield", label: "Privacy & Safety", action: {})

@@ -30,10 +30,34 @@ final class PetService {
         if let size = filters.size {
             query = query.eq("size", value: size.rawValue)
         }
+        if let gender = filters.gender {
+            query = query.eq("gender", value: gender.rawValue)
+        }
+        if let vaccinated = filters.vaccinated {
+            query = query.eq("vaccinated", value: vaccinated)
+        }
+        if let neutered = filters.neutered {
+            query = query.eq("neutered", value: neutered)
+        }
 
         return try await query
             .order("created_at", ascending: false)
             .range(from: page * 20, to: (page + 1) * 20 - 1)
+            .execute()
+            .value
+    }
+
+    // MARK: - Fetch Pets for Map (has location_point set)
+
+    func fetchPetsForMap() async throws -> [Pet] {
+        // Fetch up to 200 available pets ordered by newest; map view filters client-side for those with coordinates.
+        try await client
+            .from("pets")
+            .select("*, foster:users!pets_foster_id_fkey(*)")
+            .eq("status", value: PetStatus.available.rawValue)
+            .not("location_point", operator: "is", value: "null")
+            .order("created_at", ascending: false)
+            .limit(200)
             .execute()
             .value
     }
@@ -66,6 +90,22 @@ final class PetService {
             .eq("user_id", value: userId.uuidString)
             .eq("pet_id", value: petId.uuidString)
             .execute()
+    }
+
+    // MARK: - Saved Pets (full objects)
+
+    func fetchSavedPets(userId: UUID) async throws -> [Pet] {
+        struct SavedRow: Decodable {
+            let pet: Pet
+            enum CodingKeys: String, CodingKey { case pet }
+        }
+        let rows: [SavedRow] = try await client
+            .from("saved_pets")
+            .select("pet:pets!saved_pets_pet_id_fkey(*, foster:users!pets_foster_id_fkey(*))")
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+            .value
+        return rows.map(\.pet)
     }
 
     func fetchSavedPetIds(userId: UUID) async throws -> Set<UUID> {
@@ -142,6 +182,7 @@ struct PetInsert: Encodable {
     let neutered: Bool
     let status: String
     let city: String?
+    let locationPoint: GeoPointInsert?
     let photos: [String]
 
     enum CodingKeys: String, CodingKey {
@@ -152,5 +193,6 @@ struct PetInsert: Encodable {
         case size
         case healthNotes   = "health_notes"
         case behaviorNotes = "behavior_notes"
+        case locationPoint = "location_point"
     }
 }

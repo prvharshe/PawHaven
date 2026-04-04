@@ -6,8 +6,9 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AuthViewModel.self) private var authVM
 
-    @State private var vm        = HomeViewModel()
-    @State private var path      = NavigationPath()
+    @State private var vm           = HomeViewModel()
+    @State private var path         = NavigationPath()
+    @State private var showFilters  = false
     @Namespace private var hero
 
     var body: some View {
@@ -60,6 +61,30 @@ struct HomeView: View {
             }
             .navigationTitle("Discover")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showFilters = true
+                    } label: {
+                        Label("Filters", systemImage: vm.filters == PetFilters()
+                              ? "line.3.horizontal.decrease.circle"
+                              : "line.3.horizontal.decrease.circle.fill")
+                            .labelStyle(.iconOnly)
+                            .foregroundStyle(vm.filters == PetFilters()
+                                             ? Color.primary : Color.phPrimary)
+                    }
+                }
+            }
+            .sheet(isPresented: $showFilters) {
+                FilterSheetView(filters: Binding(
+                    get: { vm.filters },
+                    set: { newFilters in
+                        Task { await vm.applyFilter(newFilters, userId: authVM.currentUserId) }
+                    }
+                ))
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
             .navigationDestination(for: Pet.self) { pet in
                 PetDetailView(petId: pet.id)
                     .navigationTransition(.zoom(sourceID: pet.id, in: hero))

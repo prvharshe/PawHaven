@@ -66,7 +66,8 @@ struct PetDetailView: View {
         }
         .sheet(isPresented: $showReport) {
             if let pet = vm.pet {
-                ReportSheet(targetType: "pet", targetId: pet.id)
+                ReportView(targetType: "pet", targetId: pet.id)
+                    .environment(authVM)
             }
         }
         .navigationDestination(item: $chatThread) { nav in
@@ -337,70 +338,6 @@ struct FlowLayout: Layout {
     }
 }
 
-// MARK: - Report Sheet (wired to DB)
-
-struct ReportSheet: View {
-    let targetType: String
-    let targetId:   UUID
-    @Environment(AuthViewModel.self) private var authVM
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var reason    = "Fake listing"
-    @State private var isLoading = false
-
-    private let reasons = ["Fake listing", "Abuse", "Spam", "Mistreatment", "Other"]
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Why are you reporting this \(targetType)?") {
-                    Picker("Reason", selection: $reason) {
-                        ForEach(reasons, id: \.self) { Text($0).tag($0) }
-                    }
-                    .pickerStyle(.inline)
-                }
-            }
-            .navigationTitle("Report")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Submit") {
-                        guard let reporterId = authVM.currentUserId else { return }
-                        isLoading = true
-                        Task {
-                            defer { isLoading = false }
-                            struct ReportInsert: Encodable {
-                                let reporterId: UUID; let targetType: String
-                                let targetId: String; let reason: String
-                                enum CodingKeys: String, CodingKey {
-                                    case reporterId = "reporter_id"
-                                    case targetType = "target_type"
-                                    case targetId   = "target_id"
-                                    case reason
-                                }
-                            }
-                            try? await SupabaseClient.shared
-                                .from("reports")
-                                .insert(ReportInsert(
-                                    reporterId: reporterId,
-                                    targetType: targetType,
-                                    targetId:   targetId.uuidString,
-                                    reason:     reason
-                                ))
-                                .execute()
-                            dismiss()
-                        }
-                    }
-                    .fontWeight(.semibold)
-                    .disabled(isLoading)
-                }
-            }
-        }
-    }
-}
 
 #Preview {
     NavigationStack { PetDetailView(petId: UUID()) }

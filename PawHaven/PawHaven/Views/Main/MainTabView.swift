@@ -21,7 +21,8 @@ struct MainTabView: View {
             }
 
             Tab("Map", systemImage: "map.fill", value: PHTab.map) {
-                MapPlaceholderView()
+                PetMapView()
+                    .environment(authVM)
             }
 
             // Centre "+" tab — opens AddPetView as a sheet so the tab bar
@@ -55,28 +56,6 @@ struct MainTabView: View {
     }
 }
 
-// MARK: - Map Placeholder (Phase 3)
-
-struct MapPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "map.fill")
-                    .font(.system(size: 52))
-                    .foregroundStyle(Color.phPrimary.opacity(0.5))
-                Text("Map View")
-                    .font(.title2.bold())
-                Text("Nearby pets, fosters, and vets.\nComing in Phase 3.")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.phTextSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.phBackground)
-            .navigationTitle("Map")
-        }
-    }
-}
 
 #Preview {
     MainTabView()
