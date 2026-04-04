@@ -7,6 +7,7 @@
 import SwiftUI
 import Observation
 import PhotosUI
+import CoreLocation
 
 @Observable
 @MainActor
@@ -36,9 +37,7 @@ final class AddPetViewModel {
     var behaviorTags:  Set<String> = []
 
     // MARK: - Step 4: Location & Review
-    var city:      String  = ""
-    var latitude:  Double? = nil
-    var longitude: Double? = nil
+    var city: String = ""
 
     // MARK: - Publish state
     var isPublishing:   Bool    = false
@@ -97,10 +96,9 @@ final class AddPetViewModel {
             let photoURLs = try await storageService.uploadPetPhotos(selectedImages, petId: petId)
 
             // 2. Insert pet row
-            let geoPoint: GeoPointInsert? = {
-                guard let lat = latitude, let lng = longitude else { return nil }
-                return GeoPointInsert(coordinates: [lng, lat])  // GeoJSON: [longitude, latitude]
-            }()
+            // Geocode city name → city-centre coordinates.
+            // Stores only ~city-level accuracy, never the foster's exact address.
+            let geoPoint: GeoPointInsert? = await geocodeCity(city)
 
             let draft = PetInsert(
                 id:            petId,
@@ -125,6 +123,20 @@ final class AddPetViewModel {
         } catch {
             publishError = error.localizedDescription
         }
+    }
+
+    // MARK: - Geocoding
+
+    /// Resolves a city name to its administrative centre coordinates.
+    /// Returns nil on failure — the pet is still saved without a map pin.
+    private func geocodeCity(_ cityName: String) async -> GeoPointInsert? {
+        let trimmed = cityName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        let geocoder = CLGeocoder()
+        guard let placemark = try? await geocoder.geocodeAddressString(trimmed).first,
+              let loc = placemark.location else { return nil }
+        return GeoPointInsert(longitude: loc.coordinate.longitude,
+                              latitude:  loc.coordinate.latitude)
     }
 
     private func buildBehaviorNotes() -> String? {

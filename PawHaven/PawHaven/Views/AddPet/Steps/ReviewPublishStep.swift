@@ -6,9 +6,6 @@ import SwiftUI
 struct ReviewPublishStep: View {
     @Bindable var vm: AddPetViewModel
 
-    @State private var locationManager = LocationManager()
-    @State private var isLocating      = false
-
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -22,58 +19,12 @@ struct ReviewPublishStep: View {
                 }
                 .padding(.top, 8)
 
-                // City field + location capture
-                VStack(spacing: 10) {
-                    PHTextField(
-                        label: "City *",
-                        placeholder: "e.g. Mumbai",
-                        text: $vm.city
-                    )
-
-                    Button {
-                        isLocating = true
-                        locationManager.requestPermissionAndLocation()
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isLocating && vm.latitude == nil {
-                                ProgressView()
-                                    .scaleEffect(0.75)
-                                Text("Getting location…")
-                            } else if vm.latitude != nil {
-                                Image(systemName: "location.fill")
-                                    .foregroundStyle(Color.phSuccess)
-                                Text("Location captured")
-                                    .foregroundStyle(Color.phSuccess)
-                            } else {
-                                Image(systemName: "location")
-                                Text("Use My Location for map pin")
-                            }
-                        }
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(vm.latitude != nil
-                                    ? Color.phSuccess.opacity(0.1)
-                                    : Color.phSurface)
-                        .foregroundStyle(vm.latitude != nil ? Color.phSuccess : Color.phPrimary)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(vm.latitude != nil
-                                        ? Color.phSuccess.opacity(0.4)
-                                        : Color.phBorder, lineWidth: 1)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isLocating && vm.latitude == nil)
-                }
-                .onChange(of: locationManager.location) { _, loc in
-                    guard let loc else { return }
-                    vm.latitude  = loc.coordinate.latitude
-                    vm.longitude = loc.coordinate.longitude
-                    isLocating   = false
-                }
+                // City field — geocoded to city-centre on publish (privacy safe)
+                PHTextField(
+                    label: "City *",
+                    placeholder: "e.g. Mumbai",
+                    text: $vm.city
+                )
 
                 Divider()
 

@@ -21,10 +21,16 @@ struct GeoPoint: Codable {
 }
 
 // MARK: - GeoPointInsert (Swift → Supabase PostgREST insert)
+// PostgREST requires WKT format for geography columns, not GeoJSON.
 
 struct GeoPointInsert: Encodable {
-    let type        = "Point"
-    let coordinates: [Double] // [longitude, latitude]
+    let longitude: Double
+    let latitude:  Double
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode("POINT(\(longitude) \(latitude))")
+    }
 }
 
 struct Pet: Codable, Identifiable, Hashable {
